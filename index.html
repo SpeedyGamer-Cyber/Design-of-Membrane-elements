@@ -1,99 +1,181 @@
-<!DOCTYPE html>
-<html lang='en' data-theme='dark'>
+<!doctype html>
+<html lang="en">
 <head>
-  <meta charset='utf-8'/>
-  <meta name='viewport' content='width=device-width, initial-scale=1'/>
-  <title>RC Membrane Design — EN 1992-1-1:2023 Appendix G.3</title>
-  <link rel='stylesheet' href='styles.css'/>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RC Membrane Elements — In-Plane Stress Design</title>
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <header class='topbar'>
-    <div class='brand'>
-      <img src='assets/logo.png' alt='LR logo' class='logo'/>
-      <div class='brand-text'>
-        <h1>RC Membrane Design</h1>
-        <p class='subtitle'>EN 1992-1-1:2023 — Appendix G.3</p>
+  <header class="topbar">
+    <div class="container topbar__inner">
+      <div class="brand">
+        <img class="brand__logo" src="assets/logo.png" alt="Company logo" onerror="this.style.display='none'" />
+        <div class="brand__text">
+          <div class="brand__title">Reinforced Concrete Membrane Elements</div>
+          <div class="brand__subtitle">Appendix G.3 of EN 1992-1-1:2023</div>
+        </div>
+      </div>
+
+      <div class="topbar__actions">
+        <button id="themeToggle" class="btn btn--ghost" type="button" title="Toggle dark/light">🌗</button>
+        <button id="printBtn" class="btn btn--ghost" type="button" title="Print">🖨️</button>
       </div>
     </div>
-    <div class='actions'>
-      <button id='theme-toggle' class='ghost' title='Toggle light/dark'>🌙 Dark</button>
-      <button id='btn-run' class='primary'>Run Design</button>
-      <button id='btn-reset' class='ghost'>Reset</button>
-      <button id='btn-print' class='ghost'>Print/Save</button>
-    </div>
   </header>
-  <main class='container'>
-    <section class='card' id='inputs'>
-      <h2>Inputs</h2>
-      <p class='note'>Sign convention: tension & shear positive; compression negative. τ<sub>xy</sub> positive on +x face in +y direction.</p>
-      <div class='grid-2'>
-        <fieldset>
-          <legend>Material & Partial Factors</legend>
-          <div class='field'><label>fck (MPa)</label><input type='number' id='fck' value='40' step='0.1'/></div>
-          <div class='field'><label>fyk (MPa)</label><input type='number' id='fyk' value='500' step='1'/></div>
-          <div class='field'><label>γc</label><input type='number' id='gamma_c' value='1.5' step='0.01'/></div>
-          <div class='field'><label>γs</label><input type='number' id='gamma_s' value='1.15' step='0.01'/></div>
-          <div class='field'><label>ν</label><input type='number' id='nu_coeff' value='0.4' step='0.01'/></div>
-        </fieldset>
-        <fieldset>
-          <legend>Stress Points (2D in-plane)</legend>
-          <div class='table-wrap'>
-            <table id='stress-table' class='table'>
-              <thead><tr><th>#</th><th>σx (MPa)</th><th>σy (MPa)</th><th>τxy (MPa)</th><th>Label</th><th></th></tr></thead>
-              <tbody>
+
+  <main class="container">
+
+    <!-- INPUTS -->
+    <section class="panel" id="inputsPanel">
+      <div class="panel__header">
+        <h2>Inputs</h2>
+        <p class="muted">Sign convention: tensile stress is positive, compressive stress is negative; shear τ<sub>xy</sub> is positive if shear on the +x face acts along +y.</p>
+      </div>
+
+      <div class="panel__body">
+        <div class="inputs-grid">
+          <div class="field">
+            <label for="fck">f<sub>ck</sub> (MPa) <span class="req">*</span></label>
+            <input id="fck" type="number" step="0.1" value="40" />
+            <div class="hint">Characteristic compressive cylinder strength of concrete.</div>
+          </div>
+          <div class="field">
+            <label for="gammaC">γ<sub>c</sub></label>
+            <input id="gammaC" type="number" step="0.01" value="1.50" />
+            <div class="hint">Partial safety factor of concrete (typ. 1.5).</div>
+          </div>
+          <div class="field">
+            <label for="ktc">k<sub>tc</sub></label>
+            <input id="ktc" type="number" step="0.01" value="1.00" />
+            <div class="hint">Factor for sustained loads / time of loading.</div>
+          </div>
+          <div class="field">
+            <label for="fyk">f<sub>yk</sub> (MPa) <span class="req">*</span></label>
+            <input id="fyk" type="number" step="1" value="500" />
+            <div class="hint">Characteristic yield strength of reinforcement.</div>
+          </div>
+          <div class="field">
+            <label for="gammaS">γ<sub>s</sub></label>
+            <input id="gammaS" type="number" step="0.01" value="1.15" />
+            <div class="hint">Partial safety factor of reinforcement (typ. 1.15).</div>
+          </div>
+          <div class="field">
+            <label for="nu">ν</label>
+            <input id="nu" type="number" step="0.01" value="0.40" />
+            <div class="hint">Concrete stress limit coefficient (default 0.4).</div>
+          </div>
+        </div>
+
+        <div class="stress-block">
+          <div class="stress-block__header">
+            <h3>Stresses at points</h3>
+            <div class="stress-actions">
+              <button id="addPointBtn" class="btn" type="button">+ Add point</button>
+            </div>
+          </div>
+
+          <div class="table-wrap" role="region" aria-label="Stress input table">
+            <table class="table" id="stressTable">
+              <thead>
                 <tr>
-                  <td>1</td>
-                  <td><input type='number' step='0.1' value='5'/></td>
-                  <td><input type='number' step='0.1' value='-2'/></td>
-                  <td><input type='number' step='0.1' value='3'/></td>
-                  <td><input type='text' value='P1'/></td>
-                  <td><button class='icon-btn remove' title='Remove'>✕</button></td>
+                  <th style="width: 9rem;">Point</th>
+                  <th>σ<sub>x</sub> (MPa)</th>
+                  <th>σ<sub>y</sub> (MPa)</th>
+                  <th>τ<sub>xy</sub> (MPa)</th>
+                  <th style="width: 5rem;"> </th>
+                </tr>
+              </thead>
+              <tbody id="stressTbody">
+                <tr>
+                  <td><input class="in-table" value="P1" /></td>
+                  <td><input class="in-table" type="number" step="0.01" value="1.0" /></td>
+                  <td><input class="in-table" type="number" step="0.01" value="-2.0" /></td>
+                  <td><input class="in-table" type="number" step="0.01" value="1.5" /></td>
+                  <td><button class="btn btn--ghost btn--danger" type="button" title="Remove" disabled>✖</button></td>
                 </tr>
               </tbody>
             </table>
           </div>
-          <div class='table-actions'>
-            <button id='add-row' class='secondary'>+ Add Row</button>
-            <button id='sample-data' class='ghost'>Load Sample</button>
-          </div>
-        </fieldset>
-      </div>
-    </section>
+        </div>
 
-    <section class='card' id='summary'>
-      <h2>Summary of Results</h2>
-      <div class='table-wrap'>
-        <table id='results-table' class='table compact'>
-          <thead>
-            <tr>
-              <th>Label</th><th>σ1</th><th>σ2</th><th>τmax</th><th>θp</th>
-              <th>Req. Reinforcement?</th><th>Method</th><th>ρx</th><th>ρy</th><th>σcd</th><th>Checks</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </section>
-
-    <section class='card' id='details'><h2>Detailed Calculations</h2><div id='details-container' class='accordion'></div></section>
-
-    <section class='card' id='plots'>
-      <div class='plot-header'>
-        <h2>Mohr's Circles</h2>
-        <div class='zoom-controls'>
-          <button id='zoom-out' class='ghost'>−</button>
-          <span id='zoom-level'>100%</span>
-          <button id='zoom-in' class='ghost'>+</button>
-          <button id='zoom-reset' class='ghost' title='Reset view'>Reset</button>
+        <div class="cta-row">
+          <button id="calcBtn" class="btn btn--primary" type="button">Calculate</button>
+          <button id="plotBtn" class="btn" type="button">Plot Mohr's Circle</button>
+          <div class="status" id="status"></div>
         </div>
       </div>
-      <canvas id='mohrCanvas' width='1200' height='600' title='Scroll to zoom, drag to pan'></canvas>
-      <div class='legend' id='legend'></div>
-      <p class='note'>Tip: Use mouse wheel to zoom and drag to pan (touchpads: pinch/drag).</p>
     </section>
+
+    <!-- RESULTS SUMMARY -->
+    <section class="panel" id="resultsPanel">
+      <div class="panel__header">
+        <h2>Results Summary</h2>
+        <p class="muted">All stresses are reported in MPa. Reinforcement ratios ρ are dimensionless (A<sub>s</sub> / (b·t)).</p>
+      </div>
+      <div class="panel__body">
+        <div class="kpi-grid" id="kpiGrid">
+          <div class="kpi"><div class="kpi__label">η<sub>cc</sub></div><div class="kpi__value" id="etaCc">—</div></div>
+          <div class="kpi"><div class="kpi__label">f<sub>cd</sub> (MPa)</div><div class="kpi__value" id="fcd">—</div></div>
+          <div class="kpi"><div class="kpi__label">f<sub>yd</sub> (MPa)</div><div class="kpi__value" id="fyd">—</div></div>
+          <div class="kpi"><div class="kpi__label">ν·f<sub>cd</sub> (MPa)</div><div class="kpi__value" id="nuFcd">—</div></div>
+        </div>
+
+        <div class="table-wrap">
+          <table class="table" id="resultsTable">
+            <thead>
+              <tr>
+                <th>Point</th>
+                <th>σ<sub>1</sub></th>
+                <th>σ<sub>2</sub></th>
+                <th>τ<sub>max</sub></th>
+                <th>θ<sub>p</sub> (deg)</th>
+                <th>ρ<sub>x</sub></th>
+                <th>ρ<sub>y</sub></th>
+                <th>σ<sub>cd</sub></th>
+                <th>Limit (ν·f<sub>cd</sub>)</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="resultsTbody">
+              <tr><td colspan="10" class="muted">Run <b>Calculate</b> to populate results.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- DETAILED CALCULATION -->
+    <section class="panel" id="detailPanel">
+      <div class="panel__header">
+        <h2>Detailed Calculation</h2>
+        <p class="muted">Full step-by-step computation is shown for each point, including formulas with substituted values.</p>
+      </div>
+      <div class="panel__body" id="details">
+        <div class="muted">Run <b>Calculate</b> to generate the detailed steps.</div>
+      </div>
+    </section>
+
+    <!-- MOHR'S CIRCLE -->
+    <section class="panel" id="mohrPanel">
+      <div class="panel__header">
+        <h2>Mohr's Circle</h2>
+        <p class="muted">Mohr’s circles are plotted for all stress points. Different colors represent different points. Principal stresses are annotated on the σ-axis.</p>
+      </div>
+      <div class="panel__body">
+        <div class="canvas-wrap">
+          <canvas id="mohrCanvas" width="980" height="520" aria-label="Mohr's circle plot"></canvas>
+        </div>
+        <div id="legend" class="legend"></div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <div class="muted"> LR - Fixed Structures </div>
+    </footer>
+
   </main>
 
-  <footer class='footer'><p>For professional use. Verify results independently.</p></footer>
-  <script src='app.js'></script>
+  <script src="app.js"></script>
 </body>
 </html>
