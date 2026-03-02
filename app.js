@@ -86,13 +86,13 @@ function optimumReference(sx, sy, txy, fyd){
   } else if (sx < -tau && sx <= sy && (sx*sy <= tau*tau)){
     caseName = 'Case B';
     rhoPx = 0;
-    rhoPy = (sy + (tau*tau)/sx) / fyd;
-    sigmaPcdRaw = sx * (1 + Math.pow(tau/sx, 2));
+    rhoPy = (sy + (tau*tau)/Math.abs(sx)) / fyd;
+    sigmaPcdRaw = Math.abs(sx) * (1 + Math.pow(tau/sx, 2));
   } else if (sy < -tau && sx >= sy && (sx*sy <= tau*tau)){
     caseName = 'Case C';
-    rhoPx = (sx + (tau*tau)/sy) / fyd;
+    rhoPx = (sx + (tau*tau)/Math.abs(sy)) / fyd;
     rhoPy = 0;
-    sigmaPcdRaw = sy * (1 + Math.pow(tau/sy, 2));
+    sigmaPcdRaw = Math.abs(sy) * (1 + Math.pow(tau/sy, 2));
   }
 
   return {
@@ -349,17 +349,17 @@ function renderDetailed({mat, results}){
     const refCase = reinf.refCase || '—';
     const rhoXprimeFormula = (refCase === 'Case B') ? '0'
       : (refCase === 'Case A') ? '(σx + |τ|)/fyd'
-      : (refCase === 'Case C') ? '(σx + |τ|^2/σy)/fyd'
+      : (refCase === 'Case C') ? '(σx + τ^2/|σy|)/fyd'
       : '—';
 
     const rhoYprimeFormula = (refCase === 'Case C') ? '0'
       : (refCase === 'Case A') ? '(σy + |τ|)/fyd'
-      : (refCase === 'Case B') ? '(σy + |τ|^2/σx)/fyd'
+      : (refCase === 'Case B') ? '(σy + τ^2/|σx|)/fyd'
       : '—';
 
     const sigmaPrimeFormula = (refCase === 'Case A') ? '2|τ|'
-      : (refCase === 'Case B') ? 'σx·[1+(|τ|/σx)^2]'
-      : (refCase === 'Case C') ? 'σy·[1+(|τ|/σy)^2]'
+      : (refCase === 'Case B') ? '|σx|·[1+(τ/σx)^2]'
+      : (refCase === 'Case C') ? '|σy|·[1+(τ/σy)^2]'
       : '—';
 
     const limXtxt = reinf.limX && reinf.limX.applicable ? `[${fmt(reinf.limX.lo,6)}, ${fmt(reinf.limX.hi,6)}]` : 'N/A';
@@ -553,7 +553,7 @@ function drawMohr({results}){
     ctx.lineTo(x, y0+4);
     ctx.strokeStyle = axisColor;
     ctx.stroke();
-    ctx.fillText(s.toFixed(0), x-8, H - plot.bottom + 18);
+    ctx.fillText(s.toFixed(1), x-8, H - plot.bottom + 18);
   }
 
   for (let t = yStart; t <= tauMax + 1e-9; t += txStep){
@@ -563,7 +563,7 @@ function drawMohr({results}){
     ctx.lineTo(x0+4, y);
     ctx.strokeStyle = axisColor;
     ctx.stroke();
-    if (Math.abs(t) > 1e-9) ctx.fillText(t.toFixed(0), 10, y+4);
+    if (Math.abs(t) > 1e-9) ctx.fillText(t.toFixed(1), 10, y+4);
   }
 
   results.forEach((r, idx) => {
