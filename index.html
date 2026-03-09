@@ -30,41 +30,61 @@
     <section class="panel" id="inputsPanel">
       <div class="panel__header">
         <h2>Inputs</h2>
-        <p class="muted">Sign convention: tensile stress is positive, compressive stress is negative; shear τ<sub>xy</sub> is positive if shear on the +x face acts along +y.</p>
+        <p class="muted">
+          Sign convention: tensile stress is positive, compressive stress is negative;
+          shear τ<sub>xy</sub> is positive if shear on the +x face acts along +y.
+        </p>
       </div>
 
       <div class="panel__body">
         <div class="inputs-grid">
+
           <div class="field">
             <label for="fck">f<sub>ck</sub> (MPa) <span class="req">*</span></label>
             <input id="fck" type="number" step="0.1" value="40" />
             <div class="hint">Characteristic compressive cylinder strength of concrete.</div>
           </div>
+
           <div class="field">
             <label for="gammaC">γ<sub>c</sub></label>
             <input id="gammaC" type="number" step="0.01" value="1.50" />
             <div class="hint">Partial safety factor of concrete (typ. 1.5).</div>
           </div>
+
           <div class="field">
             <label for="ktc">k<sub>tc</sub></label>
             <input id="ktc" type="number" step="0.01" value="1.00" />
             <div class="hint">Factor for sustained loads / time of loading.</div>
           </div>
+
           <div class="field">
             <label for="fyk">f<sub>yk</sub> (MPa) <span class="req">*</span></label>
             <input id="fyk" type="number" step="1" value="500" />
             <div class="hint">Characteristic yield strength of reinforcement.</div>
           </div>
+
           <div class="field">
             <label for="gammaS">γ<sub>s</sub></label>
             <input id="gammaS" type="number" step="0.01" value="1.15" />
             <div class="hint">Partial safety factor of reinforcement (typ. 1.15).</div>
           </div>
+
           <div class="field">
             <label for="nu">ν</label>
             <input id="nu" type="number" step="0.01" value="0.40" />
             <div class="hint">Concrete stress limit coefficient (default 0.4).</div>
           </div>
+
+          <div class="field">
+            <label for="thetaMode">θ mode for design</label>
+            <select id="thetaMode">
+              <option value="principal" selected>Principal (θp) — auto</option>
+              <option value="user">User θ (per point)</option>
+              <option value="envelope">Envelope (max ρ of principal vs user)</option>
+            </select>
+            <div class="hint">Controls whether reinforcement is based on θp, user θ, or conservative envelope.</div>
+          </div>
+
         </div>
 
         <div class="stress-block">
@@ -83,15 +103,18 @@
                   <th>σ<sub>x</sub> (MPa)</th>
                   <th>σ<sub>y</sub> (MPa)</th>
                   <th>τ<sub>xy</sub> (MPa)</th>
+                  <th>θ (deg)</th>
                   <th style="width: 5rem;"> </th>
                 </tr>
               </thead>
+
               <tbody id="stressTbody">
                 <tr>
                   <td><input class="in-table" value="P1" /></td>
                   <td><input class="in-table" type="number" step="0.01" value="1.0" /></td>
                   <td><input class="in-table" type="number" step="0.01" value="-2.0" /></td>
                   <td><input class="in-table" type="number" step="0.01" value="1.5" /></td>
+                  <td><input class="in-table" type="number" step="0.1" value="45" /></td>
                   <td><button class="btn btn--ghost btn--danger" type="button" title="Remove" disabled>✖</button></td>
                 </tr>
               </tbody>
@@ -104,6 +127,7 @@
           <button id="plotBtn" class="btn" type="button">Plot Mohr's Circle</button>
           <div class="status" id="status"></div>
         </div>
+
       </div>
     </section>
 
@@ -111,8 +135,11 @@
     <section class="panel" id="resultsPanel">
       <div class="panel__header">
         <h2>Results Summary</h2>
-        <p class="muted">All stresses are reported in MPa. Reinforcement ratios ρ are dimensionless (A<sub>s</sub> / (b·t)).</p>
+        <p class="muted">
+          All stresses are reported in MPa. Reinforcement ratios ρ are dimensionless (A<sub>s</sub> / (b·t)).
+        </p>
       </div>
+
       <div class="panel__body">
         <div class="kpi-grid" id="kpiGrid">
           <div class="kpi"><div class="kpi__label">η<sub>cc</sub></div><div class="kpi__value" id="etaCc">—</div></div>
@@ -130,6 +157,7 @@
                 <th>σ<sub>2</sub></th>
                 <th>τ<sub>max</sub></th>
                 <th>θ<sub>p</sub> (deg)</th>
+                <th>θ used (deg)</th>
                 <th>ρ<sub>x</sub></th>
                 <th>ρ<sub>y</sub></th>
                 <th>σ<sub>cd</sub></th>
@@ -137,8 +165,9 @@
                 <th>Status</th>
               </tr>
             </thead>
+
             <tbody id="resultsTbody">
-              <tr><td colspan="10" class="muted">Run <b>Calculate</b> to populate results.</td></tr>
+              <tr><td colspan="11" class="muted">Run <b>Calculate</b> to populate results.</td></tr>
             </tbody>
           </table>
         </div>
@@ -151,6 +180,7 @@
         <h2>Detailed Calculation</h2>
         <p class="muted">Full step-by-step computation is shown for each point, including formulas with substituted values.</p>
       </div>
+
       <div class="panel__body" id="details">
         <div class="muted">Run <b>Calculate</b> to generate the detailed steps.</div>
       </div>
@@ -160,8 +190,12 @@
     <section class="panel" id="mohrPanel">
       <div class="panel__header">
         <h2>Mohr's Circle</h2>
-        <p class="muted">Mohr’s circles are plotted for all stress points. Different colors represent different points. Principal stresses are annotated on the σ-axis.</p>
+        <p class="muted">
+          Mohr’s circles are plotted for all stress points. Different colors represent different points.
+          Principal stresses are annotated on the σ-axis.
+        </p>
       </div>
+
       <div class="panel__body">
         <div class="canvas-wrap">
           <canvas id="mohrCanvas" width="980" height="520" aria-label="Mohr's circle plot"></canvas>
@@ -173,7 +207,6 @@
     <footer class="footer">
       <div class="muted"> © OFFSHORE FIXED STRUCTURES 2025 — EC2 DESIGN OF MEMBRANE ELEMENTS FOR INPLANE STRESSES</div>
     </footer>
-
   </main>
 
   <script src="app.js"></script>
