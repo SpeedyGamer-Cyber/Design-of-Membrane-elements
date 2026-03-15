@@ -1,15 +1,18 @@
 // RC Membrane Elements — In-plane stresses
-// Optimum reinforcement method corrected (Option 2):
+// Design logic:
 // - General method uses selected θ mode (principal/user/envelope)
-// - Optimum method provides reference ρ′ and optimum angle θ′
-// - Final ρ = max(ρ_gen_used, ρ′)
-// - IMPORTANT: signed τxy is used in reinforcement equations; |τxy| is used only for concrete stress magnitude checks.
+// - Envelope mode compares principal θ and user θ only
+// - Optimum method provides reference ρ′ and optimum angle θ′ for limitation checks and user information
+// - Final design reinforcement is based on the selected GENERAL method only
+// - IMPORTANT: |τxy| is used in reinforcement equations and concrete stress magnitude checks
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
 const fckRef = 40.0; // MPa
 const colors = ['#2563eb', '#f97316', '#22c55e', '#a855f7', '#ef4444', '#14b8a6', '#eab308', '#0ea5e9', '#f43f5e', '#84cc16'];
+
+let lastPlotData = null;
 
 function fmt(x, d = 3) {
   if (!isFinite(x)) return '—';
@@ -133,10 +136,11 @@ function optimumReference(sx, sy, txy, fyd) {
     caseName = 'Case A';
     cotThetaPrime = 1.0;
     thetaPrimeDeg = 45.0;
-    rhoPx = (sx + txy) / fyd; // signed τxy
-    rhoPy = (sy + txy) / fyd;
-    sigmaPcdRaw = 2 * txy; // signed
+    rhoPx = (sx + tauAbs) / fyd;
+    rhoPy = (sy + tauAbs) / fyd;
+    sigmaPcdRaw = 2 * tauAbs;
   }
+    
   // Case B: σx < -|τ| and σx ≤ σy and (σxσy ≤ τ^2)
   else if (sx < -tauAbs && sx <= sy && (sx * sy <= tau2)) {
     caseName = 'Case B';
@@ -191,7 +195,7 @@ function designReinforcement(point, mat) {
   const cotU = cotFromThetaDeg(thetaUserDeg);
   const userThetaValid = isFinite(cotU) && cotU > 0;
 
-  // General method (principal) — signed τxy in reinforcement, |τ| in σcd
+  // General method (principal) — |τxy| used in reinforcement and σcd
   const rhoXrawP = (sx + tauAbs * cotP) / fyd;
   const rhoYrawP = (sy + tauAbs / cotP) / fyd;
   const rhoXgenP = Math.max(0, rhoXrawP);
@@ -233,8 +237,8 @@ function designReinforcement(point, mat) {
   }
 
   // Used GENERAL method based on selected θ
-  const rhoXrawUsed = (sx + txy * cotUsed) / fyd;
-  const rhoYrawUsed = (sy + txy / cotUsed) / fyd;
+  const rhoXrawUsed = (sx + tauAbs * cotUsed) / fyd;
+  const rhoYrawUsed = (sy + tauAbs / cotUsed) / fyd;
   const rhoXgenUsed = Math.max(0, rhoXrawUsed);
   const rhoYgenUsed = Math.max(0, rhoYrawUsed);
   const sigmaCdUsed = Math.abs(tauAbs * (cotUsed + 1 / cotUsed));
@@ -294,13 +298,13 @@ function designReinforcement(point, mat) {
   const rhoXprime = ref.rhoXprime;
   const rhoYprime = ref.rhoYprime;
 
-  // Final envelope: max(general-used, optimum)
+  // Final provided reinforcement is based on selected GENERAL method only
   const rhoXprov = rhoXgenUsed;
   const rhoYprov = rhoYgenUsed;
 
-  const governsX = (isFinite(rhoXprime) && rhoXprime > rhoXgenUsed + 1e-12) ? 'Optimum (ρ′)' : `General (${genBasis})`;
-  const governsY = (isFinite(rhoYprime) && rhoYprime > rhoYgenUsed + 1e-12) ? 'Optimum (ρ′)' : `General (${genBasis})`;
-
+  const governsX = `General (${genBasis})`;
+  const governsY = `General (${genBasis})`;    
+    
   const limX = limitationBand(rhoXprime);
   const limY = limitationBand(rhoYprime);
 
@@ -312,7 +316,7 @@ function designReinforcement(point, mat) {
 
   return {
     requiresReinf: true,
-    method: 'General + Optimum envelope',
+    method: 'General method + optimum limitation check',
     thetaPdeg: th.thetaPdeg,
     thetaCdeg: th.thetaCdeg,
     thetaDeg: th.thetaDeg,
@@ -470,15 +474,15 @@ function renderDetailed({ mat, results }) {
 
     const generalCompare = `
       <div class="eq">
-        <b>General method (Principal θ)</b><br/>
+        <b>General method (Principal θ) — using |τxy|</b><br/>
         θ (acute) = ${fmtDeg(reinf.thetaDeg)}° ⇒ cotθ = ${fmt(reinf.cotP, 6)}<br/>
         ρ<sub>x,raw</sub> = (σ<sub>x</sub> + |τ<sub>xy</sub>|·cotθ)/f<sub>yd</sub> = (${fmt(sx, 3)} + ${fmt(tauAbs, 3)}·${fmt(reinf.cotP, 6)})/${fmt(mat.fyd, 3)} = ${fmt(reinf.rhoXrawP, 6)}<br/>
         ρ<sub>y,raw</sub> = (σ<sub>y</sub> + |τ<sub>xy</sub>|/cotθ)/f<sub>yd</sub> = (${fmt(sy, 3)} + ${fmt(tauAbs, 3)}/${fmt(reinf.cotP, 6)})/${fmt(mat.fyd, 3)} = ${fmt(reinf.rhoYrawP, 6)}<br/>
         ρ<sub>x,gen</sub> = ${fmt(reinf.rhoXgenP, 6)} ; ρ<sub>y,gen</sub> = ${fmt(reinf.rhoYgenP, 6)}<br/>
-        σ<sub>cd</sub> = |tau|·(cotθ + 1/cotθ) = ${fmt(reinf.sigmaCdP, 3)} MPa
+        σ<sub>cd</sub> = |τxy|·(cotθ + 1/cotθ) = ${fmt(reinf.sigmaCdP, 3)} MPa
       </div>
       <div class="eq" style="margin-top:10px;">
-        <b>General method (User θ)</b><br/>
+        <b>General method (User θ) — using |τxy|</b><br/>
         ${userThetaLine}<br/>
         ${isFinite(reinf.cotU) ? `cotθ = ${fmt(reinf.cotU, 6)}<br/>` : `cotθ = —<br/>`}
         ρ<sub>x,raw</sub> = (${fmt(sx, 3)} + ${fmt(tauAbs, 3)}·${fmt(reinf.cotU, 6)})/${fmt(mat.fyd, 3)} = ${fmt(reinf.rhoXrawU, 6)}<br/>
@@ -506,11 +510,11 @@ function renderDetailed({ mat, results }) {
 
     let optForm = '—';
     if (reinf.refCase === 'Case A') {
-      optForm = `Case A: cotθ′=1 (θ′=45°), ρ′x=(σx+τxy)/fyd, ρ′y=(σy+τxy)/fyd, σ′cd=2τxy`;
+      optForm = `Case A: cotθ′=1 (θ′=45°), ρ′x=(σx+|τxy|)/fyd, ρ′y=(σy+|τxy|)/fyd, σ′cd=2|τxy|`;
     } else if (reinf.refCase === 'Case B') {
-      optForm = `Case B: cotθ′=-σx/|τxy|, ρ′x=0, ρ′y=(σy+τxy^2/σx)/fyd, σ′cd=σx[1+(τxy/σx)^2]`;
+      optForm = `Case B: cotθ′=-σx/|τxy|, ρ′x=0, ρ′y=(σy+τxy^2/|σx|)/fyd, σ′cd=|σx|[1+(τxy/σx)^2]`;
     } else if (reinf.refCase === 'Case C') {
-      optForm = `Case C: cotθ′=|τxy|/(-σy), ρ′x=(σx+τxy^2/σy)/fyd, ρ′y=0, σ′cd=σy[1+(τxy/σy)^2]`;
+      optForm = `Case C: cotθ′=|τxy|/(-σy), ρ′x=(σx+τxy^2/|σy|)/fyd, ρ′y=0, σ′cd=|σy|[1+(τxy/σy)^2]`;
     } else if (reinf.refCase === 'No shear') {
       optForm = `No shear: ρ′x=max(0,σx/fyd), ρ′y=max(0,σy/fyd)`;
     }
@@ -597,6 +601,25 @@ function renderDetailed({ mat, results }) {
   }).join('');
 
   root.innerHTML = matBlock + blocks;
+}
+
+function clearMohr() {
+  const canvas = $('#mohrCanvas');
+  const ctx = canvas.getContext('2d');
+  const cssWidth = canvas.clientWidth;
+  const cssHeight = canvas.clientHeight;
+  const dpr = window.devicePixelRatio || 1;
+
+  canvas.width = Math.round(cssWidth * dpr);
+  canvas.height = Math.round(cssHeight * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, cssWidth, cssHeight);
+
+  const bg = getComputedStyle(document.documentElement).getPropertyValue('--panel').trim();
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, cssWidth, cssHeight);
+
+  $('#legend').innerHTML = '';
 }
 
 // Mohr's Circle
@@ -813,7 +836,10 @@ function setupTheme() {
     const next = (document.documentElement.dataset.theme === 'dark') ? 'light' : 'dark';
     document.documentElement.dataset.theme = next;
     localStorage.setItem('theme', next);
-    try { drawMohr(computeAll()); } catch { /* ignore */ }
+    try {
+      if (lastPlotData) drawMohr(lastPlotData);
+      else clearMohr();
+    } catch { /* ignore */ }
   });
 }
 
@@ -829,6 +855,8 @@ function main() {
       const data = computeAll();
       renderSummary(data);
       renderDetailed(data);
+      lastPlotData = null;
+      clearMohr();
       setStatus(`Calculated ${data.results.length} point(s).`, 'info');
     } catch (err) {
       setStatus(err.message || String(err), 'error');
@@ -840,6 +868,7 @@ function main() {
       const data = computeAll();
       renderSummary(data);
       renderDetailed(data);
+      lastPlotData = data;
       drawMohr(data);
       setStatus(`Plotted Mohr's circle for ${data.results.length} point(s).`, 'info');
       document.getElementById('mohrPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -848,18 +877,14 @@ function main() {
     }
   });
 
-  try {
-    const data = computeAll();
-    renderSummary(data);
-    renderDetailed(data);
-    drawMohr(data);
-    setStatus('Ready. Update inputs and press Calculate.', 'info');
-  } catch {
-    setStatus('Ready.', 'info');
-  }
-
+  clearMohr();
+  setStatus('Ready. Update inputs and press Calculate.', 'info');
+  
   window.addEventListener('resize', () => {
-    try { drawMohr(computeAll()); } catch { /* ignore */ }
+    try {
+      if (lastPlotData) drawMohr(lastPlotData);
+      else clearMohr();
+    } catch { /* ignore */ }
   });
 }
 
