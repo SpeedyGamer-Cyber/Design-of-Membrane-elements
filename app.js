@@ -761,7 +761,9 @@ function drawMohr({ results }) {
     ctx.lineTo(x0 + 4, y);
     ctx.strokeStyle = axisColor;
     ctx.stroke();
-    if (Math.abs(t) > 1e-9) ctx.fillText(t.toFixed(1), 10, y + 4);
+
+    const tLabel = Math.abs(t) < 1e-9 ? 0 : t;
+    ctx.fillText(tLabel.toFixed(1), 10, y + 4);
   }
 
   results.forEach((r, idx) => {
